@@ -32,12 +32,17 @@ def main_spider(headers,block_name,block_url):
         print("正在爬取板块第" + str(page_num) + "页", "/共", last_page_num, "页")
         tidList = []
         uidList = []
+        print(links)
         for link in links:
             tid_list = re.findall('(?<=tid=)([^&]+)', link.attrs['href'])
             if tid_list:
                 tid = tid_list[0]
             else:
-                tid = None
+                tid_list = re.findall("(?<=thread-)[0-9]+-",link.attrs['href'])
+                if tid_list:
+                    tid = (tid_list[0]).replace("-","")
+                else:
+                    tid = None
             tidList.append(tid)
         for uidLinkTag in uidLinkTags:
             # uidLink = uidLinkTag.attrs.get('href')
