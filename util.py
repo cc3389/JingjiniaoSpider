@@ -11,7 +11,6 @@ HashMap_file_path = "./tidHashMap.dat"
 
 @retry(wait_fixed=2000, stop_max_attempt_number=3)
 def make_request(base_url):
-    print("开始请求：", base_url)
     headers = load_json_from_file('headers.json')
     response = requests.get(base_url, headers=headers)
     response.raise_for_status()
@@ -64,7 +63,13 @@ def load_json_from_file(file_path):
     """
     从文件中加载JSON数据并返回Python对象
     """
-    with open(file_path, "r", encoding='utf-8') as file:
-        json_data = file.read()
-        python_obj = json.loads(json_data)
+    with open(file_path, "r", encoding="utf-8") as file:
+        try:
+            json_data = file.read()
+            python_obj = json.loads(json_data)
+        except json.JSONDecodeError as e:
+            print('文件内容不是合法的 JSON 格式，错误信息：', e)
+        except Exception as e:
+            print('发生了未知错误，错误信息：', e)
+
     return python_obj
