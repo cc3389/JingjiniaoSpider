@@ -2,23 +2,17 @@ import os.path
 import re
 
 from bs4 import BeautifulSoup
-import requests
-from util import load_json_from_file
-
-headers = load_json_from_file("headers.json")
-
-'''
-爬取具体的文章并存入文档中
-'''
+from util import *
 
 
-def thread_spider(thread_url, headers, block_name):
+def thread_spider(thread_url, block_name):
+    """
+    爬取具体的文章并存入文档中
+    """
+
     page_num = 1
-    print("爬取的文章url为：\n" + thread_url)
     while True:
-        response = requests.get(thread_url, headers=headers)
-        print(response.status_code)
-        print("正在爬取第" + str(page_num) + "页")
+        response = make_request(thread_url)
         soup = BeautifulSoup(response.text, 'html.parser')
         # 获取标题
         elements = soup.select('#thread_subject')
@@ -31,7 +25,8 @@ def thread_spider(thread_url, headers, block_name):
         title = title.replace("/", "").replace(":", "").replace("*", "").replace("?", "").replace(" ", "")
         title = title.replace("\\", "").replace("<", "").replace(">", "").replace("|", "")
         if page_num == 1:
-            print(title)
+            print("正在爬取 {} 板块的 {}".format(block_name, title))
+        print("正在爬取第" + str(page_num) + "页")
         # 选择class=t_f的tags
         t_f = soup.select(".t_f div")
         for tags in t_f:
@@ -64,4 +59,4 @@ def thread_spider(thread_url, headers, block_name):
 
 if __name__ == '__main__':
     # 主题的地址
-    thread_spider('https://www.jingjiniao.info/thread-43826-1-1.html', headers)
+    thread_spider('https://www.jingjiniao.info/thread-43826-1-1.html')

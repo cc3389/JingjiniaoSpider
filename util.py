@@ -3,8 +3,19 @@ import json
 import os
 import threading
 from datetime import datetime
+from retrying import retry
+import requests
 
-HashMap_file_path = "./tidHashMap"
+HashMap_file_path = "./tidHashMap.dat"
+
+
+@retry(wait_fixed=2000, stop_max_attempt_number=3)
+def make_request(base_url):
+    print("开始请求：", base_url)
+    headers = load_json_from_file('headers.json')
+    response = requests.get(base_url, headers=headers)
+    response.raise_for_status()
+    return response
 
 
 def compare_time_str(time_str1, time_str2):

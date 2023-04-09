@@ -1,8 +1,7 @@
-import requests
 from bs4 import BeautifulSoup
 import re
 import concurrent.futures
-import thread
+from thread import thread_spider
 from util import *
 
 '''
@@ -11,7 +10,7 @@ from util import *
 
 
 # 定义主函数main_spider，传入请求头headers，板块名称block_name和板块链接block_url
-def main_spider(headers, block_name, block_url, hash_map):
+def main_spider(block_name, block_url, hash_map):
     base_url = block_url
     page_num = 1
     last_page_num = "999"
@@ -19,8 +18,7 @@ def main_spider(headers, block_name, block_url, hash_map):
     while True:
         if page_num > int(last_page_num):
             break
-        response = requests.get(base_url, headers=headers)
-        print(response.status_code)
+        response = make_request(base_url)
         soup = BeautifulSoup(response.text, 'html.parser')
         # 获取本页中的所有文章链接
         links = soup.select('.s.xst')
@@ -33,7 +31,7 @@ def main_spider(headers, block_name, block_url, hash_map):
         tidList = []
         uidList = []
         update_timeList = []
-        # print()
+
         for link in links:
             # print(type(link))
             span_tag = link.find('span')
@@ -63,6 +61,7 @@ def main_spider(headers, block_name, block_url, hash_map):
                 linkList.append(
                     'https://www.jingjiniao.info/forum.php?mod=viewthread&tid=' + tid + '&page=1&authorid=' + uid)
                 hash_map[tid] = update_time
+
         # 找到下一页
         nextLinkTag = soup.select('.nxt')
         if nextLinkTag:
@@ -71,15 +70,13 @@ def main_spider(headers, block_name, block_url, hash_map):
             page_num = page_num + 1
         else:
             break
-    print("开始爬取{}板块第{}页的文章".format(block_name, page_num - 1))
+
     # 多线程遍历爬取文章
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        results = [executor.submit(thread.thread_spider, link, headers, block_name) for link in linkList]
+        results = [executor.submit(thread_spider, link, block_name) for link in linkList]
         concurrent.futures.wait(results)
 
 
 if __name__ == '__main__':
-    # json格式的请求头
-    headers = load_json_from_file("./headers.json")
     hash_map = load_hashmap_from_file()
-    main_spider(headers, "新生投票区", "https://www.jingjiniao.info/forum-102-1.html", hash_map)
+    main_spider("新生投票区", "https://www.jingjiniao.info/forum-102-1.html", hash_map)
