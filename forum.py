@@ -15,31 +15,63 @@ def main_spider(block_name, block_url, hash_map):
     page_num = 1
     last_page_num = "999"
     linkList = []
+    # 评论数列表
+    commentList = []
+    # 浏览数列表
+    viewList = []
+    # 作者名列表
+    authorList = []
+    # tid列表
+    tidList = []
+    # uid列表
+    uidList = []
+    # 标题列表
+    titleList = []
+    # 更新时间列表
+    update_timeList = []
     while True:
         if page_num > int(last_page_num):
             break
         response = make_request(base_url)
         soup = BeautifulSoup(response.text, 'html.parser')
+
         # 获取本页中的所有文章链接
         links = soup.select('.s.xst')
+        commentTags = soup.select(".acgifnums")
+
+        # 获取评论数和浏览数
+        for comment in commentTags:
+            a_tag = comment.find('a', class_="xi2")
+            commentList.append(a_tag.text)
+            viewTag = comment.find("span")
+            viewList.append(viewTag.text)
+
+        # 获取作者列表
+        author_divs = soup.find_all('div', class_='acgifby1')
+        for tag in author_divs:
+            for link in tag.find_all('a'):
+                authorList.append(link.text)
+        authorList.pop(0)
+        if len(links) == 0:
+            print("找不到链接，可能是cookie有误或过期了")
         uidLinkTags = soup.findAll('a', attrs={'cs': '1'}, href=re.compile('uid'))
         if page_num == 1:
             uidLinkTags.pop(0)
             last_page_tag = soup.find("span", title=re.compile("共 [0-9]+ 页"))
             last_page_num = last_page_tag.text.replace(" ", "").replace("/", "").replace("页", "")
         print("正在爬取" + block_name + "板块第" + str(page_num) + "页", "/共", last_page_num, "页")
-        tidList = []
-        uidList = []
-        update_timeList = []
-
         for link in links:
-            # print(type(link))
+            # 获取标题
+            titleList.append(re.sub(r'\[最后更新:.*]', '', link.text))
+            # 获取更新时间
             span_tag = link.find('span')
             if span_tag is None:
                 update_time = "1990-1-1 00:00"
             else:
                 update_time = span_tag.get('title')
             update_timeList.append(update_time)
+
+            # 获取tid
             tid_list = re.findall('(?<=tid=)([^&]+)', link.attrs['href'])
             if tid_list:
                 tid = tid_list[0]
@@ -50,10 +82,14 @@ def main_spider(block_name, block_url, hash_map):
                 else:
                     tid = None
             tidList.append(tid)
+
+        # 获取uid
         for uidLinkTag in uidLinkTags:
             # uidLink = uidLinkTag.attrs.get('href')
             uid = re.findall('(?<=uid-)([^\.]+)', uidLinkTag.attrs['href'])[0]
             uidList.append(uid)
+
+        # 获取文章链接列表
         for uid, tid, update_time in zip(uidList, tidList, update_timeList):
             if tid is None:
                 continue
@@ -61,6 +97,9 @@ def main_spider(block_name, block_url, hash_map):
                 linkList.append(
                     'https://www.jingjiniao.info/forum.php?mod=viewthread&tid=' + tid + '&page=1&authorid=' + uid)
                 hash_map[tid] = update_time
+
+        # 加锁用csv保存数据
+        write_to_csv(commentList, viewList, authorList, tidList, uidList, titleList, update_timeList,'data.csv')
 
         # 找到下一页
         nextLinkTag = soup.select('.nxt')
@@ -70,7 +109,6 @@ def main_spider(block_name, block_url, hash_map):
             page_num = page_num + 1
         else:
             break
-
     # 多线程遍历爬取文章
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         results = [executor.submit(thread_spider, link, block_name) for link in linkList]

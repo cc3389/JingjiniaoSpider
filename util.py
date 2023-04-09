@@ -1,3 +1,4 @@
+import csv
 import pickle
 import json
 import os
@@ -27,13 +28,30 @@ def compare_time_str(time_str1, time_str2):
 
 
 # 定义一个互斥锁
-lock = threading.Lock()
+map_lock = threading.Lock()
 
 
 # 定义一个更新哈希表的函数，该函数是线程安全的
 def update_hash_map(tid, update_time, hash_map):
-    with lock:
+    with map_lock:
         hash_map[tid] = update_time
+
+
+csv_lock = threading.Lock()
+
+
+def write_to_csv(commentList, viewList, authorList, tidList,
+                             uidList, titleList, update_timeList, filename):
+    with csv_lock:
+        with open(filename, 'a', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile)
+            # 如果文件为空，写入表头
+            if csvfile.tell() == 0:
+                writer.writerow(['评论数', '浏览数', '作者名', 'tid', 'uid', '标题', '更新时间'])
+            # 写入数据
+            for i in range(len(commentList)):
+                writer.writerow([commentList[i], viewList[i], authorList[i],
+                                 tidList[i], uidList[i], titleList[i], update_timeList[i]])
 
 
 def save_hashmap_to_file(hashmap):
