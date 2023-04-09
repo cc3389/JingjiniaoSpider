@@ -1,6 +1,4 @@
 import concurrent.futures
-import time
-
 from util import *
 from forum import main_spider
 

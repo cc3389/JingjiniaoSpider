@@ -19,15 +19,12 @@ def thread_spider(thread_url, block_name):
         if elements:
             title = elements[0].text
         else:
-            title = soup.find('title').text
-            print("出错了！")
-            with open('log.txt', 'a') as file:
-                file.write(response.status_code+"\n"+response.text+"\n\n"+
-                           "------------------------------------------------------"+"\n\n")
-                file.close()
-            with open("错误链接.txt","a") as file:
-                file.write(thread_url+"\n")
-                file.close()
+            print("出错了！链接为：", thread_url + "\n")
+            with open('log.txt', 'a', encoding='utf-8') as f1:
+                f1.write(response.status_code + "\n" + response.text + "\n\n" +
+                         "------------------------------------------------------" + "\n\n")
+            with open("错误链接.txt", "a", encoding='utf-8') as f2:
+                f2.write(thread_url + "\n")
             break
         title = re.sub(r"\[最后更新.*?\]", "", title)
         title = title.replace("/", "").replace(":", "").replace("*", "").replace("?", "").replace(" ", "")
