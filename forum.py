@@ -14,22 +14,22 @@ def main_spider(block_name, block_url, hash_map):
     base_url = block_url
     page_num = 1
     last_page_num = "999"
-    linkList = []
-    # 评论数列表
-    commentList = []
-    # 浏览数列表
-    viewList = []
-    # 作者名列表
-    authorList = []
-    # tid列表
-    tidList = []
-    # uid列表
-    uidList = []
-    # 标题列表
-    titleList = []
-    # 更新时间列表
-    update_timeList = []
     while True:
+        linkList = []
+        # 评论数列表
+        commentList = []
+        # 浏览数列表
+        viewList = []
+        # 作者名列表
+        authorList = []
+        # tid列表
+        tidList = []
+        # uid列表
+        uidList = []
+        # 标题列表
+        titleList = []
+        # 更新时间列表
+        update_timeList = []
         if page_num > int(last_page_num):
             break
         response = make_request(base_url)
@@ -51,11 +51,12 @@ def main_spider(block_name, block_url, hash_map):
         for tag in author_divs:
             for link in tag.find_all('a'):
                 authorList.append(link.text)
-        authorList.pop(0)
         if len(links) == 0:
             print("找不到链接，可能是cookie有误或过期了")
         uidLinkTags = soup.findAll('a', attrs={'cs': '1'}, href=re.compile('uid'))
         if page_num == 1:
+            # 去除 admin
+            authorList.pop(0)
             uidLinkTags.pop(0)
             last_page_tag = soup.find("span", title=re.compile("共 [0-9]+ 页"))
             last_page_num = last_page_tag.text.replace(" ", "").replace("/", "").replace("页", "")
@@ -97,10 +98,11 @@ def main_spider(block_name, block_url, hash_map):
                 linkList.append(
                     'https://www.jingjiniao.info/forum.php?mod=viewthread&tid=' + tid + '&page=1&authorid=' + uid)
                 hash_map[tid] = update_time
-
         # 加锁用csv保存数据
-        write_to_csv(commentList, viewList, authorList, tidList, uidList, titleList, update_timeList,'data.csv')
-
+        try:
+            write_to_csv(commentList, viewList, authorList, tidList, uidList, titleList, update_timeList, 'data.csv')
+        except Exception as e:
+            print('发生了未知错误，错误信息：', e)
         # 找到下一页
         nextLinkTag = soup.select('.nxt')
         if nextLinkTag:
@@ -108,6 +110,7 @@ def main_spider(block_name, block_url, hash_map):
             base_url = nextLinkStr
             page_num = page_num + 1
         else:
+            print(nextLinkTag)
             break
     # 多线程遍历爬取文章
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
