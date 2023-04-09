@@ -76,7 +76,6 @@ def main_spider(block_name, block_url, hash_map):
                     update_time = "1990-1-1 00:00"
             else:
                 update_time = span_tag.get('title')
-            print(update_time)
             update_timeList.append(update_time)
 
             # 获取tid
@@ -118,7 +117,6 @@ def main_spider(block_name, block_url, hash_map):
             base_url = nextLinkStr
             page_num = page_num + 1
         else:
-            print(nextLinkTag)
             break
     # 多线程遍历爬取文章
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
