@@ -121,9 +121,9 @@ def main_spider(block_name, block_url, hash_map):
             print(nextLinkTag)
             break
     # 多线程遍历爬取文章
-    # with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-    #     results = [executor.submit(thread_spider, link, block_name) for link in linkList]
-    #     concurrent.futures.wait(results)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        results = [executor.submit(thread_spider, link, block_name) for link in linkList]
+        concurrent.futures.wait(results)
 
 
 if __name__ == '__main__':
