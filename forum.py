@@ -67,9 +67,16 @@ def main_spider(block_name, block_url, hash_map):
             # 获取更新时间
             span_tag = link.find('span')
             if span_tag is None:
-                update_time = "1990-1-1 00:00"
+                # 更新时间在标题中
+                match = re.search(r'\[(最后更新|Last update):\s*(\d{4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{1,2})\]', link.text)
+                if match:
+                    time_str = match.group(2)
+                    update_time = time_str
+                else:
+                    update_time = "1990-1-1 00:00"
             else:
                 update_time = span_tag.get('title')
+            print(update_time)
             update_timeList.append(update_time)
 
             # 获取tid
@@ -100,7 +107,8 @@ def main_spider(block_name, block_url, hash_map):
                 hash_map[tid] = update_time
         # 加锁用csv保存数据
         try:
-            write_to_csv(commentList, viewList, authorList, tidList, uidList, titleList, update_timeList, 'data.csv')
+            write_to_csv(commentList, viewList, authorList,
+                         tidList, uidList, titleList, update_timeList, 'data.csv', block_name)
         except Exception as e:
             print('发生了未知错误，错误信息：', e)
         # 找到下一页
@@ -113,11 +121,11 @@ def main_spider(block_name, block_url, hash_map):
             print(nextLinkTag)
             break
     # 多线程遍历爬取文章
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        results = [executor.submit(thread_spider, link, block_name) for link in linkList]
-        concurrent.futures.wait(results)
+    # with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    #     results = [executor.submit(thread_spider, link, block_name) for link in linkList]
+    #     concurrent.futures.wait(results)
 
 
 if __name__ == '__main__':
     hash_map = load_hashmap_from_file()
-    main_spider("新生投票区", "https://www.jingjiniao.info/forum-102-1.html", hash_map)
+    main_spider("短篇老区", "https://www.jingjiniao.info/forum-69-1.html", hash_map)

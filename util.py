@@ -41,17 +41,17 @@ csv_lock = threading.Lock()
 
 
 def write_to_csv(commentList, viewList, authorList, tidList,
-                             uidList, titleList, update_timeList, filename):
+                 uidList, titleList, update_timeList, filename, block_name):
     with csv_lock:
         with open(filename, 'a', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
             # 如果文件为空，写入表头
             if csvfile.tell() == 0:
-                writer.writerow(['评论数', '浏览数', '作者名', 'tid', 'uid', '标题', '更新时间'])
+                writer.writerow(['评论数', '浏览数', '作者名', 'tid', 'uid', '标题', '更新时间', '板块'])
             # 写入数据
             for i in range(len(commentList)):
                 writer.writerow([commentList[i], viewList[i], authorList[i],
-                                 tidList[i], uidList[i], titleList[i], update_timeList[i]])
+                                 tidList[i], uidList[i], titleList[i], update_timeList[i], block_name])
 
 
 def save_hashmap_to_file(hashmap):
