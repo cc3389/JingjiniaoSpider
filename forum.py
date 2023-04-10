@@ -103,10 +103,10 @@ def main_spider(block_name, block_url, hash_map):
         for uid, tid, update_time in zip(uidList, tidList, update_timeList):
             if tid is None:
                 continue
+            url = 'https://www.jingjiniao.info/forum.php?mod=viewthread&tid=' + tid + '&page=1&authorid=' + uid
+            temp_urlList.append(url)
             if tid not in hash_map or compare_time_str(hash_map[tid], update_time):
-                url = 'https://www.jingjiniao.info/forum.php?mod=viewthread&tid=' + tid + '&page=1&authorid=' + uid
                 linkList.append(url)
-                temp_urlList.append(url)
                 hash_map[tid] = update_time
         # 多线程遍历爬取文章
         for link in linkList:

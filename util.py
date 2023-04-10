@@ -50,7 +50,7 @@ def write_to_csv(titleList, authorList, commentList, viewList, block_name, updat
             # 写入数据
             for i in range(len(commentList)):
                 writer.writerow([titleList[i], authorList[i], commentList[i],
-                                 viewList[i], block_name, update_timeList[i]])
+                                 viewList[i], block_name, update_timeList[i],urlList[i]])
 
 
 def save_hashmap_to_file(hashmap):
