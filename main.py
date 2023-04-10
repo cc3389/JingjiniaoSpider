@@ -7,6 +7,9 @@ hash_map = load_hashmap_from_file()
 
 def block():
     block_link_dict = load_json_from_file("./blockList.json")
+    if os.path.exists("./data.csv"):  # 判断文件是否存在
+        os.remove("./data.csv")
+        print("已删除data")
     with concurrent.futures.ThreadPoolExecutor(max_workers=9) as executor:
         results = [executor.submit(main_spider, key, value, hash_map) for (key, value) in
                    block_link_dict.items()]
@@ -17,7 +20,6 @@ def block():
 
 
 if __name__ == '__main__':
-
     block()
 
 

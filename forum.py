@@ -15,21 +15,25 @@ def main_spider(block_name, block_url, hash_map):
     page_num = 1
     last_page_num = "999"
     while True:
-        linkList = []
-        # 评论数列表
-        commentList = []
-        # 浏览数列表
-        viewList = []
-        # 作者名列表
-        authorList = []
-        # tid列表
-        tidList = []
-        # uid列表
-        uidList = []
-        # 标题列表
-        titleList = []
-        # 更新时间列表
-        update_timeList = []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            linkList = []
+            # 评论数列表
+            commentList = []
+            # 浏览数列表
+            viewList = []
+            # 作者名列表
+            authorList = []
+            # tid列表
+            tidList = []
+            # uid列表
+            uidList = []
+            # 标题列表
+            titleList = []
+            # 更新时间列表
+            update_timeList = []
+
+            # concurrent.futures.wait(results)
         if page_num > int(last_page_num):
             break
         response = make_request(base_url)
@@ -92,24 +96,28 @@ def main_spider(block_name, block_url, hash_map):
 
         # 获取uid
         for uidLinkTag in uidLinkTags:
-            # uidLink = uidLinkTag.attrs.get('href')
             uid = re.findall('(?<=uid-)([^\.]+)', uidLinkTag.attrs['href'])[0]
             uidList.append(uid)
-
+        temp_urlList = []
         # 获取文章链接列表
         for uid, tid, update_time in zip(uidList, tidList, update_timeList):
             if tid is None:
                 continue
             if tid not in hash_map or compare_time_str(hash_map[tid], update_time):
-                linkList.append(
-                    'https://www.jingjiniao.info/forum.php?mod=viewthread&tid=' + tid + '&page=1&authorid=' + uid)
+                url = 'https://www.jingjiniao.info/forum.php?mod=viewthread&tid=' + tid + '&page=1&authorid=' + uid
+                linkList.append(url)
+                temp_urlList.append(url)
                 hash_map[tid] = update_time
+        # 多线程遍历爬取文章
+        for link in linkList:
+            executor.submit(thread_spider, link, block_name)
         # 加锁用csv保存数据
         try:
-            write_to_csv(commentList, viewList, authorList,
-                         tidList, uidList, titleList, update_timeList, 'data.csv', block_name)
+            write_to_csv(titleList, authorList, commentList,
+                         viewList, block_name, update_timeList, temp_urlList, "data.csv")
         except Exception as e:
             print('发生了未知错误，错误信息：', e)
+
         # 找到下一页
         nextLinkTag = soup.select('.nxt')
         if nextLinkTag:
@@ -118,10 +126,6 @@ def main_spider(block_name, block_url, hash_map):
             page_num = page_num + 1
         else:
             break
-    # 多线程遍历爬取文章
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        results = [executor.submit(thread_spider, link, block_name) for link in linkList]
-        concurrent.futures.wait(results)
 
 
 if __name__ == '__main__':
