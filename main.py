@@ -10,7 +10,7 @@ def block():
     if os.path.exists("./data.csv"):  # 判断文件是否存在
         os.remove("./data.csv")
         print("已删除data")
-    with concurrent.futures.ThreadPoolExecutor(max_workers=9) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
         results = [executor.submit(main_spider, key, value, hash_map) for (key, value) in
                    block_link_dict.items()]
         concurrent.futures.wait(results)
