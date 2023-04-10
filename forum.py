@@ -109,6 +109,7 @@ def main_spider(block_name, block_url, hash_map):
                 linkList.append(url)
                 hash_map[tid] = update_time
         # 多线程遍历爬取文章
+        print("{}的第{}页需要更新{}篇".format(block_name, page_num, len(linkList)))
         for link in linkList:
             executor.submit(thread_spider, link, block_name)
         # 加锁用csv保存数据
