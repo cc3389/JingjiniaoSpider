@@ -40,17 +40,21 @@ def update_hash_map(tid, update_time, hash_map):
 csv_lock = threading.Lock()
 
 
-def write_to_csv(titleList, authorList, commentList, viewList, block_name, update_timeList, urlList, filename):
+def write_to_csv(titleList, authorList, commentList, viewList, block_name, update_timeList, urlList, filename,
+                 recommend_list, favorite_list):
     with csv_lock:
         with open(filename, 'a', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile)
             # 如果文件为空，写入表头
             if csvfile.tell() == 0:
-                writer.writerow(['标题', '作者', '评论数', '浏览数', '板块', '更新时间', '链接'])
+                writer.writerow(
+                    ['标题', '作者', '评论数', '浏览数', '点赞数', '收藏数', '板块',
+                     '更新时间', '链接'])
             # 写入数据
             for i in range(len(commentList)):
                 writer.writerow([titleList[i], authorList[i], commentList[i],
-                                 viewList[i], block_name, update_timeList[i],urlList[i]])
+                                 viewList[i], recommend_list[i], favorite_list[i], block_name, update_timeList[i],
+                                 urlList[i]])
 
 
 def save_hashmap_to_file(hashmap):

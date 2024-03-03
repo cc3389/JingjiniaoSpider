@@ -14,6 +14,26 @@ def main_spider(block_name, block_url, hash_map):
     base_url = block_url
     page_num = 1
     last_page_num = "999"
+    total_linkList = []
+    # 评论数列表
+    total_commentList = []
+    # 浏览数列表
+    total_viewList = []
+    # 作者名列表
+    total_authorList = []
+    # tid列表
+    total_tidList = []
+    # uid列表
+    total_uidList = []
+    # 标题列表
+    total_titleList = []
+    # 更新时间列表
+    total_update_timeList = []
+    # 点赞列表
+    recommend_list = []
+    # 收藏列表
+    favorite_list = []
+    future_list = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         while True:
             linkList = []
@@ -54,14 +74,6 @@ def main_spider(block_name, block_url, hash_map):
                     authorList.append(link.text)
             if len(links) == 0:
                 print("找不到链接，可能是cookie有误或过期了")
-            uidLinkTags = soup.findAll('a', attrs={'cs': '1'}, href=re.compile('uid'))
-            if page_num == 1:
-                # 去除 admin
-                authorList.pop(0)
-                uidLinkTags.pop(0)
-                last_page_tag = soup.find("span", title=re.compile("共 [0-9]+ 页"))
-                last_page_num = last_page_tag.text.replace(" ", "").replace("/", "").replace("页", "")
-            print("正在爬取" + block_name + "板块第" + str(page_num) + "页", "/共", last_page_num, "页")
             for link in links:
                 # 获取标题
                 titleList.append(re.sub(r'\[最后更新:.*]', '', link.text))
@@ -90,7 +102,15 @@ def main_spider(block_name, block_url, hash_map):
                     else:
                         tid = None
                 tidList.append(tid)
-
+            uidLinkTags = soup.findAll('a', attrs={'cs': '1'}, href=re.compile('uid'))
+            if page_num == 1:
+                # 去除 admin
+                if len(tidList) < len(uidLinkTags):
+                    authorList.pop(0)
+                    uidLinkTags.pop(0)
+                last_page_tag = soup.find("span", title=re.compile("共 [0-9]+ 页"))
+                last_page_num = last_page_tag.text.replace(" ", "").replace("/", "").replace("页", "")
+            print("正在爬取" + block_name + "板块第" + str(page_num) + "页", "/共", last_page_num, "页")
             # 获取uid
             for uidLinkTag in uidLinkTags:
                 uid = re.findall('(?<=uid-)([^\.]+)', uidLinkTag.attrs['href'])[0]
@@ -105,16 +125,18 @@ def main_spider(block_name, block_url, hash_map):
                 if tid not in hash_map or compare_time_str(hash_map[tid], update_time):
                     linkList.append(url)
                     hash_map[tid] = update_time
-            # 多线程遍历爬取文章
             print("{}的第{}页需要更新{}篇".format(block_name, page_num, len(linkList)))
             for link in linkList:
-                executor.submit(thread_spider, link, block_name)
-            # 加锁用csv保存数据
-            try:
-                write_to_csv(titleList, authorList, commentList,
-                             viewList, block_name, update_timeList, temp_urlList, "data.csv")
-            except Exception as e:
-                print('发生了未知错误，错误信息：', e)
+                future = executor.submit(thread_spider, link, block_name)
+                future_list.append(future)
+            total_tidList.extend(tidList)
+            total_viewList.extend(viewList)
+            total_uidList.extend(uidList)
+            total_titleList.extend(titleList)
+            total_authorList.extend(authorList)
+            total_update_timeList.extend(update_timeList)
+            total_commentList.extend(commentList)
+            total_linkList.extend(temp_urlList)
             # 找到下一页
             nextLinkTag = soup.select('.nxt')
             if nextLinkTag:
@@ -123,8 +145,22 @@ def main_spider(block_name, block_url, hash_map):
                 page_num = page_num + 1
             else:
                 break
+    # 迭代future对象，按完成顺序获取结果
+    for future in future_list:
+        try:
+            recommend_num, favorite_num = future.result()
+            recommend_list.append(recommend_num)
+            favorite_list.append(favorite_num)
+        except Exception as e:
+            print(f'Error fetching data for URL {url}: {e}')
+    # 加锁用csv保存数据
+    try:
+        write_to_csv(total_titleList, total_authorList, total_commentList,
+                     total_viewList, block_name, total_update_timeList, total_linkList, "data.csv", recommend_list, favorite_list)
+    except Exception as e:
+        print('发生了未知错误，错误信息：', e)
 
 
 if __name__ == '__main__':
-    hash_map = load_hashmap_from_file()
-    main_spider("短篇老区", "https://www.jingjiniao.info/forum-69-1.html", hash_map)
+    hash_map = {}
+    main_spider("中长篇", "https://www.jingjiniao.info/forum-85-1.html", hash_map)
