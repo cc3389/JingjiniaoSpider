@@ -13,10 +13,11 @@ def block():
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
         results = [executor.submit(main_spider, key, value, hash_map) for (key, value) in
                    block_link_dict.items()]
-        concurrent.futures.wait(results)
-        print("任务已完成,正在将索引写入文件...")
-        save_hashmap_to_file(hash_map)
-        print("写入完成")
+        # concurrent.futures.wait(results)
+        # 增量有问题，先注释掉
+        # print("任务已完成,正在将索引写入文件...")
+        # save_hashmap_to_file(hash_map)
+        # print("写入完成")
 
 
 if __name__ == '__main__':

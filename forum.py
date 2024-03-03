@@ -11,30 +11,30 @@ from util import *
 
 # 定义主函数main_spider，传入请求头headers，板块名称block_name和板块链接block_url
 def main_spider(block_name, block_url, hash_map):
-    base_url = block_url
-    page_num = 1
-    last_page_num = "999"
-    total_linkList = []
-    # 评论数列表
-    total_commentList = []
-    # 浏览数列表
-    total_viewList = []
-    # 作者名列表
-    total_authorList = []
-    # tid列表
-    total_tidList = []
-    # uid列表
-    total_uidList = []
-    # 标题列表
-    total_titleList = []
-    # 更新时间列表
-    total_update_timeList = []
-    # 点赞列表
-    recommend_list = []
-    # 收藏列表
-    favorite_list = []
-    future_list = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        base_url = block_url
+        page_num = 1
+        last_page_num = "999"
+        total_linkList = []
+        # 评论数列表
+        total_commentList = []
+        # 浏览数列表
+        total_viewList = []
+        # 作者名列表
+        total_authorList = []
+        # tid列表
+        total_tidList = []
+        # uid列表
+        total_uidList = []
+        # 标题列表
+        total_titleList = []
+        # 更新时间列表
+        total_update_timeList = []
+        # 点赞列表
+        recommend_list = []
+        # 收藏列表
+        favorite_list = []
+        future_list = []
         while True:
             linkList = []
             # 评论数列表
@@ -55,7 +55,10 @@ def main_spider(block_name, block_url, hash_map):
                 break
             response = make_request(base_url)
             soup = BeautifulSoup(response.text, 'html.parser')
-
+            not_login = soup.find_all(text="抱歉，您尚未登录，没有权限访问该版块")
+            if len(not_login) != 0:
+                print('抱歉，您尚未登录，没有权限访问该版块')
+                return
             # 获取本页中的所有文章链接
             links = soup.select('.s.xst')
             commentTags = soup.select(".acgifnums")
@@ -115,18 +118,19 @@ def main_spider(block_name, block_url, hash_map):
             for uidLinkTag in uidLinkTags:
                 uid = re.findall('(?<=uid-)([^\.]+)', uidLinkTag.attrs['href'])[0]
                 uidList.append(uid)
-            temp_urlList = []
+            urlList = []
             # 获取文章链接列表
             for uid, tid, update_time in zip(uidList, tidList, update_timeList):
                 if tid is None:
                     continue
                 url = 'https://www.jingjiniao.info/forum.php?mod=viewthread&tid=' + tid + '&page=1&authorid=' + uid
-                temp_urlList.append(url)
-                if tid not in hash_map or compare_time_str(hash_map[tid], update_time):
-                    linkList.append(url)
-                    hash_map[tid] = update_time
-            print("{}的第{}页需要更新{}篇".format(block_name, page_num, len(linkList)))
-            for link in linkList:
+                urlList.append(url)
+                # 增量有问题，先注释掉
+                # if tid not in hash_map or compare_time_str(hash_map[tid], update_time):
+                #     linkList.append(url)
+                #     hash_map[tid] = update_time
+            # print("{}的第{}页需要更新{}篇".format(block_name, page_num, len(temp_urlList)))
+            for link in urlList:
                 future = executor.submit(thread_spider, link, block_name)
                 future_list.append(future)
             total_tidList.extend(tidList)
@@ -136,7 +140,7 @@ def main_spider(block_name, block_url, hash_map):
             total_authorList.extend(authorList)
             total_update_timeList.extend(update_timeList)
             total_commentList.extend(commentList)
-            total_linkList.extend(temp_urlList)
+            total_linkList.extend(urlList)
             # 找到下一页
             nextLinkTag = soup.select('.nxt')
             if nextLinkTag:
