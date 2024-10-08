@@ -56,6 +56,9 @@ def thread_spider(thread_url, block_name):
             temp_text = ''
             for tags in t_f:
                 for tag in tags:
+                    # 过滤无关的脚本标签
+                    if 'script' == tag.name:
+                        continue
                     temp_text += tag.text
             with open(filePath, "a", encoding='utf-8') as f:
                 f.write(temp_text)
