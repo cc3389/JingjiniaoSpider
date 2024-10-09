@@ -17,10 +17,10 @@ def thread_spider(thread_url, block_name):
         while True:
             response = make_request(thread_url)
             soup = BeautifulSoup(response.text, 'html.parser')
-            not_login = soup.find_all(string="抱歉，您尚未登录，没有权限访问该版块")
-            if len(not_login) != 0:
-                print('抱歉，您尚未登录，没有权限访问该版块')
-                return recommend_num, favorite_num
+            # 判断是否出现错误提示
+            if len(soup.select("#messagetext")) > 0:
+                error_message = soup.select("#messagetext")[0].text + soup.select("#messagetext")[0].next_sibling.text
+                raise Exception(error_message)
             # 获取标题
             elements = soup.select('#thread_subject')
             if page_num == 1:
@@ -72,7 +72,7 @@ def thread_spider(thread_url, block_name):
                 # print(title+"爬取完成")
                 break
     except Exception as e:
-        print(f'爬取 {thread_url}失败: {e}')
+        print(f'爬取 {thread_url}失败。原因： {e}')
         return recommend_num, favorite_num
     return recommend_num, favorite_num
 
