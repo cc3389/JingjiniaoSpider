@@ -43,7 +43,8 @@ def thread_spider(thread_url, block_name):
                     tag.decompose()
             # 存入文件中
             fileDir = os.path.abspath("./小说输出/" + block_name)
-            filePath = os.path.join(fileDir, title + ".txt")
+            valid_title = "".join(c for c in title if c.isalnum() or c in (' ', '.', '_')).rstrip()
+            filePath = os.path.join(fileDir, valid_title + ".txt")
             if not os.path.exists(fileDir):
                 os.makedirs(fileDir)
             if page_num == 1:
