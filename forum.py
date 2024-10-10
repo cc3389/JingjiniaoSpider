@@ -116,7 +116,7 @@ def main_spider(block_name, block_url, hash_map):
             print("正在爬取" + block_name + "板块第" + str(page_num) + "页", "/共", last_page_num, "页")
             # 获取uid
             for uidLinkTag in uidLinkTags:
-                uid = re.findall('(?<=uid=)([^\.]+)', uidLinkTag.attrs['href'])[0]
+                uid = re.findall('(?<=uid[-=])([^\.]+)', uidLinkTag.attrs['href'])[0]
                 uidList.append(uid)
             urlList = []
             # 获取文章链接列表
