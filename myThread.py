@@ -1,11 +1,8 @@
 import os.path
 import re
-
 from bs4 import BeautifulSoup
-
 from decode import decode_base64_in_js
 from util import *
-
 
 def thread_spider(thread_url, block_name):
     """
@@ -37,13 +34,15 @@ def thread_spider(thread_url, block_name):
             # if page_num == 1:
             # print("正在爬取 {} 板块的 {}".format(block_name, title))
             # print("正在爬取第" + str(page_num) + "页")
-            # js脚本拼成的base64串，实际为文章第一个回复
-            base64_js_str = soup.select(".t_f script")[1].text
-            wmsj_enmessage_str = decode_base64_in_js(base64_js_str)
-            wmsj_enmessageTag = BeautifulSoup(wmsj_enmessage_str, 'html.parser')
+
             # 选择class=t_f的tags
             t_f = soup.select(".t_f div")
-            t_f.insert(0, wmsj_enmessageTag)
+            # js脚本拼成的base64串，实际为文章第一个回复
+            if len(soup.select(".t_f script")) == 2:
+                base64_js_str = soup.select(".t_f script")[1].text
+                wmsj_enmessage_str = decode_base64_in_js(base64_js_str)
+                wmsj_enmessageTag = BeautifulSoup(wmsj_enmessage_str, 'html.parser')
+                t_f.insert(0, wmsj_enmessageTag)
             for tags in t_f:
                 for tag in tags.find_all(style='display:none') + tags.find_all(class_='jammer') \
                            + tags.find_all(['br', 'img', 'a', 'i']) + tags.find_all('div', class_='quote'):
@@ -53,7 +52,7 @@ def thread_spider(thread_url, block_name):
             valid_title = "".join(c for c in title if c.isalnum() or c in (' ', '.', '_')).rstrip()
             filePath = os.path.join(fileDir, valid_title + ".txt")
             if not os.path.exists(fileDir):
-                os.makedirs(fileDir)
+                os.makedirs(fileDir, exist_ok=True)
             if page_num == 1:
                 try:
                     if os.path.exists(filePath):  # 判断文件是否存在
