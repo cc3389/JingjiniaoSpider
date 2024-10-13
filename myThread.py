@@ -59,7 +59,14 @@ def thread_spider(thread_url, block_name):
                         os.remove(filePath)  # 删除文件
                         print(f"文件 {filePath} 删除成功！")
                 except Exception as e:
-                    print(f"删除文件 {filePath} 失败: {e}")
+                    error_message = str(e)
+                    if "[WinError 32]" in error_message:
+                        # active_threads = threading.enumerate()
+                        # print(f"Current active threads: {[t.name for t in active_threads]}")
+                        # 翻页时遇到两个相同的文章链接
+                        return recommend_num, favorite_num
+                    else:
+                        print(f"删除文件 {filePath} 失败: {e}")
             temp_text = ''
             for tags in t_f:
                 for tag in tags:
