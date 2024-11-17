@@ -22,6 +22,7 @@ class ForumData:
     create_times: List[str] = field(default_factory=list)
     recommends: List[int] = field(default_factory=list)
     favorites: List[int] = field(default_factory=list)
+    word_counts: List[int] = field(default_factory=list)
     _tid_set: set = field(default_factory=set)  # 新增：用于追踪已存在的tid
 
     def add_thread(self, tid: str, link: str, comment: str, view: str, 
@@ -84,7 +85,8 @@ def main_spider(block_name: str, block_url: str, download_images: bool) -> Optio
         
         # 使用线程池并行处理所有页面
         page_data_list = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+        page_thread_pool_size = CONFIG['spider']['page_thread_pool_size']
+        with concurrent.futures.ThreadPoolExecutor(max_workers=page_thread_pool_size) as executor:
             future_to_url = {
                 executor.submit(_fetch_page_data, url, page_num + 1): url 
                 for page_num, url in enumerate(page_urls)
@@ -105,26 +107,29 @@ def main_spider(block_name: str, block_url: str, download_images: bool) -> Optio
 
         # 获取完所有页面数据后，使用集合去重确保任务不重复
         processed_tasks = set()  # 用于追踪已提交的任务
-        thread_futures = []
-        
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            # 修改提交任务的逻辑
-            for tid, link, title in zip(total_data.tids, total_data.links, total_data.titles):
-                # 使用tid作为唯一标识
+            # 修改为使用字典存储future和对应的索引
+            future_to_index = {}
+            for i, (tid, link, title) in enumerate(zip(total_data.tids, total_data.links, total_data.titles)):
                 task_key = f"{tid}"
                 if task_key not in processed_tasks:
                     processed_tasks.add(task_key)
                     future = executor.submit(threadWrapper, link, block_name, title, download_images)
-                    thread_futures.append(future)
+                    future_to_index[future] = i  # 存储future和对应的索引
 
+            # 预先初始化结果列表
+            total_data.recommends = [0] * len(total_data.tids)
+            total_data.favorites = [0] * len(total_data.tids)
+            total_data.word_counts = [0] * len(total_data.tids)
+            
             # 处理线程结果
-            _process_thread_results(thread_futures, total_data)
+            _process_thread_results(future_to_index, total_data)
         
         # 保存数据
         write_to_csv(total_data.titles, total_data.authors, total_data.comments,
                     total_data.views, block_name, total_data.update_times, 
                     total_data.links, "data.csv", total_data.recommends, total_data.favorites,
-                    total_data.create_times)
+                    total_data.create_times, total_data.word_counts)
         
         return total_data
         
@@ -186,24 +191,21 @@ def _merge_page_data(total_data: ForumData, page_data: ForumData) -> None:
             create_time=page_data.create_times[i]
         )
 
-def _process_thread_results(futures: List[concurrent.futures.Future], total_data: ForumData) -> None:
+def _process_thread_results(future_to_index: dict, total_data: ForumData) -> None:
     """处理线程执行结果"""
     logger = logging.getLogger(__name__)
     
-    for future in concurrent.futures.as_completed(futures):
+    for future in concurrent.futures.as_completed(future_to_index):
         try:
             result = future.result()
+            index = future_to_index[future]  # 获取对应的索引
             if result:
-                recommend_count, favorite_count = result
-                total_data.recommends.append(recommend_count)
-                total_data.favorites.append(favorite_count)
-            else:
-                total_data.recommends.append(0)
-                total_data.favorites.append(0)
+                recommend_count, favorite_count, word_count = result
+                total_data.recommends[index] = recommend_count
+                total_data.favorites[index] = favorite_count
+                total_data.word_counts[index] = word_count
         except Exception as e:
             logger.error(f"处理线程结果时出错: {e}")
-            total_data.recommends.append(0)
-            total_data.favorites.append(0)
 
 def threadWrapper(link, block_name, name, download_images):
     # 创建线程并执行

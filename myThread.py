@@ -24,12 +24,6 @@ def extract_title_and_counts(soup):
     return title, recommend_num, favorite_num
 
 
-def clean_title(title):
-    """
-    清理标题中的无效字符
-    """
-    title = re.sub(r"\[最后更新.*?\]", "", title)
-    return "".join(c for c in title if c.isalnum() or c in (' ', '.', '_')).rstrip()
 
 
 def get_last_page_num(soup):
@@ -44,6 +38,7 @@ def process_tags(t_f, document, download_images):
     """
     处理标签并按顺序添加文本和图片到文档
     """
+    word_count = 0  # 添加字数计数器
     for tags in t_f:
         temp_text = ''
         for tag in tags:
@@ -62,6 +57,7 @@ def process_tags(t_f, document, download_images):
                 # 移除不合法的XML字符
                 clean_text = ''.join(char for char in temp_text.strip() if ord(char) >= 32 or char in '\n\r\t')
                 document.add_paragraph(clean_text)
+                word_count += len(clean_text)  # 统计字数
                 temp_text = ''
 
             # 处理图片
@@ -83,6 +79,8 @@ def process_tags(t_f, document, download_images):
                         except:
                             pass
 
+    return word_count  # 返回该部分的字数统计
+
 
 def thread_spider(thread_url, block_name, download_images):
     """
@@ -91,6 +89,7 @@ def thread_spider(thread_url, block_name, download_images):
     start_time = time.time()
     document = Document()
     page_num = 1
+    total_word_count = 0  # 添加字数统计
 
     try:
         while True:
@@ -137,7 +136,8 @@ def thread_spider(thread_url, block_name, download_images):
                     except:
                         pass
             # 获取文章内容
-            process_tags(t_f, document, download_images)
+            page_word_count = process_tags(t_f, document, download_images)  # 获取每页的字数
+            total_word_count += page_word_count  # 累加总字数
             nextLinkTag = soup.select('.nxt')
             if nextLinkTag:
                 thread_url = nextLinkTag[0].attrs['href']
@@ -152,14 +152,15 @@ def thread_spider(thread_url, block_name, download_images):
         document.save(os.path.join(save_dir, clean_title(title) + ".docx"))
 
         end_time = time.time()
-        logging.info(f'文章《{title}》爬取完成，总耗时: {end_time - start_time:.2f}秒')
+        logging.info(f'文章《{title}》爬取完成，总字数：{total_word_count}，总耗时: {end_time - start_time:.2f}秒')
 
     except Exception as e:
         logging.error(f'爬取 {thread_url}失败。原因： {e}')
-        return 0, 0
+        return 0, 0, 0  # 添加total_word_count的返回值
 
-    return recommend_num, favorite_num
+    return recommend_num, favorite_num, total_word_count
 
 
 if __name__ == '__main__':
-    thread_spider('https://www.jingjiniao.info/forum.php?mod=viewthread&tid=54259&page=1&authorid=6772', 'test', True)
+    recommend_num, favorite_num, total_word_count = thread_spider('https://www.jingjiniao.info/forum.php?mod=viewthread&tid=54677&page=1&authorid=18199', 'test', False)
+    print(f'点赞数: {recommend_num}, 收藏数: {favorite_num}, 总字数: {total_word_count}')

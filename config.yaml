@@ -1,0 +1,30 @@
+# 爬虫基本配置
+spider:
+  # 是否下载图片
+  download_images: false
+  # 线程池大小
+  thread_pool_size: 4
+  # 页面处理线程池大小
+  page_thread_pool_size: 10
+
+# 请求配置
+request:
+  # 超时时间(秒)
+  timeout: 7
+  # 重试次数
+  retry_times: 3
+  # 重试等待时间(毫秒)
+  wait_multiplier: 1000
+  # 最大等待时间(毫秒)
+  wait_max: 10000
+
+# 板块配置
+blocks:
+  中长篇: "https://www.jingjiniao.info/forum-85-1.html"
+  短篇新区: "https://www.jingjiniao.info/forum-97-1.html"
+  翻译 同人作品区: "https://www.jingjiniao.info/forum-104-1.html"
+  2022-荆棘鸟的涅槃: "https://www.jingjiniao.info/forum-112-1.html"
+  2020-荆棘鸟的填坑计划: "https://www.jingjiniao.info/forum-108-1.html"
+  重度区: "https://www.jingjiniao.info/forum-95-1.html"
+  短篇老区: "https://www.jingjiniao.info/forum-69-1.html"
+  2019-荆棘鸟的校园计划: "https://www.jingjiniao.info/forum-83-1.html" 

@@ -1,5 +1,6 @@
 import csv
 import logging
+import re
 import time
 from io import BytesIO
 from pathlib import Path
@@ -7,10 +8,17 @@ from typing import Dict, Any
 import pickle
 import json
 import threading
-from datetime import datetime
 from retrying import retry
 import requests
+import yaml
 
+def load_config(config_path: str = "config.yaml") -> dict:
+    """加载配置文件"""
+    with open(config_path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
+
+# 加载全局配置
+CONFIG = load_config()
 class FileHandler:
     def __init__(self):
         self.hashmap_path = Path("./tidHashMap.dat")
@@ -82,10 +90,15 @@ def retry_with_logging(retry_times=3, wait_multiplier=1000, wait_max=10000):
         return wrapper
     return decorator
 
-@retry_with_logging(retry_times=3, wait_multiplier=1000, wait_max=10000)
+@retry_with_logging(
+    retry_times=CONFIG['request']['retry_times'],
+    wait_multiplier=CONFIG['request']['wait_multiplier'],
+    wait_max=CONFIG['request']['wait_max']
+)
 def make_request(url: str) -> requests.Response:
     headers = FileHandler().load_json('headers.json')
-    response = requests.get(url, headers=headers, timeout=5)
+    timeout = CONFIG['request']['timeout']
+    response = requests.get(url, headers=headers, timeout=timeout)
     response.raise_for_status()
     return response
 
@@ -95,20 +108,23 @@ csv_lock = threading.Lock()
 
 
 def write_to_csv(titleList, authorList, commentList, viewList, block_name, update_timeList, urlList, filename,
-                 recommend_list, favorite_list, create_timeList):
+                 recommend_list, favorite_list, create_timeList, word_counts):
     logging.info(f'开始写入 {block_name} 数据到 CSV 文件')
     with csv_lock:
-        with open(filename, 'a', newline='', encoding='utf-8') as csvfile:
+        # 检查文件是否存在
+        file_exists = Path(filename).exists()
+        
+        # 使用'utf-8-sig'编码替代'utf-8'，这会自动添加BOM头
+        with open(filename, 'a', newline='', encoding='utf-8-sig') as csvfile:
             writer = csv.writer(csvfile)
-            # 如果文件为空，写入表头
-            if csvfile.tell() == 0:
+            if not file_exists:  # 如果是新文件才写入表头
                 writer.writerow(
-                    ['标题', '作者', '评论数', '浏览数', '点赞数', '收藏数', '板块',
+                    ['标题', '作者', '评论数', '浏览数', '点赞数', '收藏数', '字数', '板块', 
                      '发表时间', '更新时间', '链接'])
-            # 写入数据
             for i in range(len(commentList)):
                 writer.writerow([titleList[i], authorList[i], commentList[i],
-                               viewList[i], recommend_list[i], favorite_list[i], block_name,
+                               viewList[i], recommend_list[i], favorite_list[i], 
+                               word_counts[i], block_name, 
                                create_timeList[i], update_timeList[i], urlList[i]])
 
 def download_image(img_url):
@@ -128,3 +144,23 @@ def download_image(img_url):
     except:
         logging.error(f'图片 {img_url} 下载失败')
         return None
+
+# 预编译正则表达式以提高性能
+CLEAN_TITLE_PATTERN = re.compile(r"\[最后更新.*?\]")
+INVALID_CHAR_PATTERN = re.compile(r"[^\w ._]")
+
+def clean_title(title):
+    """
+    清理标题中的无效字符
+    """
+    # 移除指定的模式
+    title = CLEAN_TITLE_PATTERN.sub("", title)
+    # 移除不需要的字符
+    title = INVALID_CHAR_PATTERN.sub("", title).rstrip()
+    return title
+
+
+
+if __name__ == '__main__':
+    title = clean_title('标题♥[]{}【】，：。！@#￥%……&*（）')
+    print(title)
