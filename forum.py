@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from bs4 import BeautifulSoup
 import re
 import concurrent.futures
@@ -58,7 +60,7 @@ class NetworkError(ForumSpiderError):
     """网络请求错误"""
     pass
 
-def main_spider(block_name: str, block_url: str, download_images: bool) -> Optional[ForumData]:
+def main_spider(block_name: str, block_url: str, download_images: bool, last_crawled_data: dict) -> Optional[ForumData]:
     logger = logging.getLogger(__name__)
     total_data = ForumData()
     
@@ -97,7 +99,15 @@ def main_spider(block_name: str, block_url: str, download_images: bool) -> Optio
                 try:
                     page_data = future.result()
                     if page_data:
-                        page_data_list.append(page_data)
+                        # 检查是否需要更新
+                        for i, tid in enumerate(page_data.tids):
+                            if tid in last_crawled_data:
+                                # 比较更新时间
+                                last_update = datetime.strptime(last_crawled_data[tid], '%Y-%m-%d %H:%M')
+                                current_update = datetime.strptime(page_data.update_times[i], '%Y-%m-%d %H:%M')
+                                if current_update <= last_update:
+                                    continue
+                            page_data_list.append(page_data)
                 except Exception as e:
                     logger.error(f'处理页面 {url} 失败: {e}')
 
@@ -358,4 +368,4 @@ def _parse_tid(link):
     return None
 
 if __name__ == '__main__':
-    main_spider("中长篇", "https://www.jingjiniao.info/forum-85-1.html", False)
+    main_spider("中长篇", "https://www.jingjiniao.info/forum-85-1.html", False, {})

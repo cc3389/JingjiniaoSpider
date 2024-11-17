@@ -11,6 +11,7 @@ import threading
 from retrying import retry
 import requests
 import yaml
+import os
 
 def load_config(config_path: str = "config.yaml") -> dict:
     """加载配置文件"""
@@ -106,26 +107,42 @@ def make_request(url: str) -> requests.Response:
 map_lock = threading.Lock()
 csv_lock = threading.Lock()
 
+def extract_tid_from_url(url: str) -> str:
+    """从URL中提取tid"""
+    tid_match = re.search(r'tid=(\d+)', url)
+    if tid_match:
+        return tid_match.group(1)
+    # 处理其他可能的URL格式
+    tid_match = re.search(r'thread-(\d+)-', url)
+    if tid_match:
+        return tid_match.group(1)
+    return None
 
 def write_to_csv(titleList, authorList, commentList, viewList, block_name, update_timeList, urlList, filename,
                  recommend_list, favorite_list, create_timeList, word_counts):
     logging.info(f'开始写入 {block_name} 数据到 CSV 文件')
+    
+    # 准备新数据
+    new_data = {}
+    for i in range(len(titleList)):
+        tid = extract_tid_from_url(urlList[i])
+        if tid:
+            new_data[tid] = [
+                titleList[i], authorList[i], commentList[i], viewList[i],
+                recommend_list[i], favorite_list[i], word_counts[i], block_name,
+                create_timeList[i], update_timeList[i], urlList[i]
+            ]
+    
     with csv_lock:
-        # 检查文件是否存在
-        file_exists = Path(filename).exists()
+        # 如果文件不存在,创建新文件
+        if not Path(filename).exists():
+            with open(filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(['标题', '作者', '评论数', '浏览数', '点赞数', '收藏数', '字数', 
+                               '板块', '发表时间', '更新时间', '链接'])
         
-        # 使用'utf-8-sig'编码替代'utf-8'，这会自动添加BOM头
-        with open(filename, 'a', newline='', encoding='utf-8-sig') as csvfile:
-            writer = csv.writer(csvfile)
-            if not file_exists:  # 如果是新文件才写入表头
-                writer.writerow(
-                    ['标题', '作者', '评论数', '浏览数', '点赞数', '收藏数', '字数', '板块', 
-                     '发表时间', '更新时间', '链接'])
-            for i in range(len(commentList)):
-                writer.writerow([titleList[i], authorList[i], commentList[i],
-                               viewList[i], recommend_list[i], favorite_list[i], 
-                               word_counts[i], block_name, 
-                               create_timeList[i], update_timeList[i], urlList[i]])
+        # 更新CSV文件
+        update_csv(new_data, filename)
 
 def download_image(img_url):
     """
@@ -159,7 +176,59 @@ def clean_title(title):
     title = INVALID_CHAR_PATTERN.sub("", title).rstrip()
     return title
 
-
+def update_csv(new_data: dict, filename: str):
+    """
+    更新CSV文件中的数据
+    - 如果是新文章则追加
+    - 如果是更新则覆盖原有行
+    """
+    temp_file = filename + '.tmp'
+    is_updated = False
+    
+    # 读取现有数据,创建tid到行号的映射
+    tid_to_row = {}
+    with open(filename, 'r', encoding='utf-8-sig') as f:
+        reader = csv.reader(f)
+        headers = next(reader)  # 跳过表头
+        for i, row in enumerate(reader):
+            # 从链接中提取tid
+            tid = re.findall(r'tid=(\d+)', row[10])[0] if row[10] else None
+            if tid:
+                tid_to_row[tid] = i + 1  # +1 因为跳过了表头
+    
+    # 创建临时文件
+    with open(filename, 'r', encoding='utf-8-sig') as f_in, \
+         open(temp_file, 'w', newline='', encoding='utf-8-sig') as f_out:
+        reader = csv.reader(f_in)
+        writer = csv.writer(f_out)
+        
+        # 写入表头
+        headers = next(reader)
+        writer.writerow(headers)
+        
+        # 复制现有数据到临时文件
+        rows = list(reader)
+        
+        # 处理每个新数据
+        for tid, data in new_data.items():
+            if tid in tid_to_row:
+                # 更新现有行
+                row_num = tid_to_row[tid]
+                rows[row_num-1] = data  # -1 因为rows从0开始
+                is_updated = True
+            else:
+                # 添加新行
+                rows.append(data)
+                is_updated = True
+        
+        # 写入所有行
+        writer.writerows(rows)
+    
+    # 如果有更新,替换原文件
+    if is_updated:
+        os.replace(temp_file, filename)
+    else:
+        os.remove(temp_file)
 
 if __name__ == '__main__':
     title = clean_title('标题♥[]{}【】，：。！@#￥%……&*（）')
