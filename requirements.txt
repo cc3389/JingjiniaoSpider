@@ -8,3 +8,4 @@ matplotlib~=3.9.2
 seaborn~=0.13.2
 docx~=0.2.4
 pyyaml~=6.0.1
+numpy~=2.1.3

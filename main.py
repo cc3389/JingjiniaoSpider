@@ -1,8 +1,7 @@
 import concurrent.futures
-import traceback
-import csv
 
-from analysis import analyze_post_trends, analyze_post_quality
+import analyze_post_trends
+from analysis import analyze_post_quality
 from forum import main_spider
 from util import *
 
@@ -31,7 +30,7 @@ def process_blocks(block_dict: Dict[str, str], download_images: bool = False) ->
         thread_pool_size = CONFIG['spider']['thread_pool_size']
         with concurrent.futures.ThreadPoolExecutor(max_workers=thread_pool_size) as executor:
             futures = {
-                executor.submit(main_spider, key, value, download_images, last_crawled_data): key 
+                executor.submit(main_spider, key, value, download_images, last_crawled_data): key
                 for key, value in block_dict.items()
             }
 
@@ -44,8 +43,8 @@ def process_blocks(block_dict: Dict[str, str], download_images: bool = False) ->
 
         logging.info("所有区块处理完成")
         # 依次执行所有分析函数
-        analyze_post_trends(data_file)
         analyze_post_quality(data_file)
+        analyze_post_trends.analyze_post_trends(data_file)
 
     except Exception as e:
         logging.error(f"执行过程中发生错误: {str(e)}")

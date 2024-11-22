@@ -99,6 +99,8 @@ def main_spider(block_name: str, block_url: str, download_images: bool, last_cra
                 try:
                     page_data = future.result()
                     if page_data:
+                        # 创建一个新的ForumData对象来存储需要更新的数据
+                        updated_page_data = ForumData()
                         # 检查是否需要更新
                         for i, tid in enumerate(page_data.tids):
                             if tid in last_crawled_data:
@@ -107,7 +109,21 @@ def main_spider(block_name: str, block_url: str, download_images: bool, last_cra
                                 current_update = datetime.strptime(page_data.update_times[i], '%Y-%m-%d %H:%M')
                                 if current_update <= last_update:
                                     continue
-                            page_data_list.append(page_data)
+                            # 只添加需要更新的数据
+                            updated_page_data.add_thread(
+                                tid=page_data.tids[i],
+                                link=page_data.links[i],
+                                comment=page_data.comments[i],
+                                view=page_data.views[i],
+                                author=page_data.authors[i],
+                                uid=page_data.uids[i],
+                                title=page_data.titles[i],
+                                update_time=page_data.update_times[i],
+                                create_time=page_data.create_times[i]
+                            )
+                        # 只有当有需要更新的数据时才添加到列表中
+                        if updated_page_data.tids:
+                            page_data_list.append(updated_page_data)
                 except Exception as e:
                     logger.error(f'处理页面 {url} 失败: {e}')
 

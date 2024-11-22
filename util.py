@@ -13,13 +13,17 @@ import requests
 import yaml
 import os
 
+
 def load_config(config_path: str = "config.yaml") -> dict:
     """加载配置文件"""
     with open(config_path, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
+
 # 加载全局配置
 CONFIG = load_config()
+
+
 class FileHandler:
     def __init__(self):
         self.hashmap_path = Path("./tidHashMap.dat")
@@ -62,20 +66,21 @@ def retry_with_logging(retry_times=3, wait_multiplier=1000, wait_max=10000):
             stop_max_attempt_number=retry_times,
             wait_exponential_multiplier=wait_multiplier,
             wait_exponential_max=wait_max,
-            retry_on_exception=lambda e: isinstance(e, (requests.Timeout, requests.ConnectionError, requests.RequestException))
+            retry_on_exception=lambda e: isinstance(e, (
+            requests.Timeout, requests.ConnectionError, requests.RequestException))
         )
         def wrapper(*args, **kwargs):
             if not hasattr(wrapper, '_retry_count'):
                 wrapper._retry_count = {}
-            
+
             thread_id = threading.get_ident()
             if thread_id not in wrapper._retry_count:
                 wrapper._retry_count[thread_id] = 0
-            
+
             try:
                 wrapper._retry_count[thread_id] += 1
                 current_attempt = wrapper._retry_count[thread_id]
-                
+
                 # 获取URL参数（假设它是第一个参数）
                 url = args[0] if args else kwargs.get('url', 'unknown_url')
                 startTime = time.time()
@@ -88,8 +93,11 @@ def retry_with_logging(retry_times=3, wait_multiplier=1000, wait_max=10000):
                     print(f"已达到最大重试次数，放弃请求: {url}")
                     wrapper._retry_count[thread_id] = 0
                 raise
+
         return wrapper
+
     return decorator
+
 
 @retry_with_logging(
     retry_times=CONFIG['request']['retry_times'],
@@ -103,9 +111,11 @@ def make_request(url: str) -> requests.Response:
     response.raise_for_status()
     return response
 
+
 # 定义一个互斥锁
 map_lock = threading.Lock()
 csv_lock = threading.Lock()
+
 
 def extract_tid_from_url(url: str) -> str:
     """从URL中提取tid"""
@@ -118,10 +128,11 @@ def extract_tid_from_url(url: str) -> str:
         return tid_match.group(1)
     return None
 
+
 def write_to_csv(titleList, authorList, commentList, viewList, block_name, update_timeList, urlList, filename,
                  recommend_list, favorite_list, create_timeList, word_counts):
     logging.info(f'开始写入 {block_name} 数据到 CSV 文件')
-    
+
     # 准备新数据
     new_data = {}
     for i in range(len(titleList)):
@@ -132,17 +143,18 @@ def write_to_csv(titleList, authorList, commentList, viewList, block_name, updat
                 recommend_list[i], favorite_list[i], word_counts[i], block_name,
                 create_timeList[i], update_timeList[i], urlList[i]
             ]
-    
+
     with csv_lock:
         # 如果文件不存在,创建新文件
         if not Path(filename).exists():
             with open(filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
                 writer = csv.writer(csvfile)
-                writer.writerow(['标题', '作者', '评论数', '浏览数', '点赞数', '收藏数', '字数', 
-                               '板块', '发表时间', '更新时间', '链接'])
-        
+                writer.writerow(['标题', '作者', '评论数', '浏览数', '点赞数', '收藏数', '字数',
+                                 '板块', '发表时间', '更新时间', '链接'])
+
         # 更新CSV文件
         update_csv(new_data, filename)
+
 
 def download_image(img_url):
     """
@@ -162,9 +174,11 @@ def download_image(img_url):
         logging.error(f'图片 {img_url} 下载失败')
         return None
 
+
 # 预编译正则表达式以提高性能
 CLEAN_TITLE_PATTERN = re.compile(r"\[最后更新.*?\]")
 INVALID_CHAR_PATTERN = re.compile(r"[^\w ._]")
+
 
 def clean_title(title):
     """
@@ -176,6 +190,7 @@ def clean_title(title):
     title = INVALID_CHAR_PATTERN.sub("", title).rstrip()
     return title
 
+
 def update_csv(new_data: dict, filename: str):
     """
     更新CSV文件中的数据
@@ -184,7 +199,7 @@ def update_csv(new_data: dict, filename: str):
     """
     temp_file = filename + '.tmp'
     is_updated = False
-    
+
     # 读取现有数据,创建tid到行号的映射
     tid_to_row = {}
     with open(filename, 'r', encoding='utf-8-sig') as f:
@@ -195,40 +210,47 @@ def update_csv(new_data: dict, filename: str):
             tid = re.findall(r'tid=(\d+)', row[10])[0] if row[10] else None
             if tid:
                 tid_to_row[tid] = i + 1  # +1 因为跳过了表头
-    
+
     # 创建临时文件
     with open(filename, 'r', encoding='utf-8-sig') as f_in, \
-         open(temp_file, 'w', newline='', encoding='utf-8-sig') as f_out:
+            open(temp_file, 'w', newline='', encoding='utf-8-sig') as f_out:
         reader = csv.reader(f_in)
         writer = csv.writer(f_out)
-        
+
         # 写入表头
         headers = next(reader)
         writer.writerow(headers)
-        
+
         # 复制现有数据到临时文件
         rows = list(reader)
-        
+
         # 处理每个新数据
         for tid, data in new_data.items():
             if tid in tid_to_row:
                 # 更新现有行
                 row_num = tid_to_row[tid]
-                rows[row_num-1] = data  # -1 因为rows从0开始
+                rows[row_num - 1] = data  # -1 因为rows从0开始
                 is_updated = True
             else:
                 # 添加新行
                 rows.append(data)
                 is_updated = True
-        
+
         # 写入所有行
         writer.writerows(rows)
-    
+
     # 如果有更新,替换原文件
     if is_updated:
         os.replace(temp_file, filename)
     else:
         os.remove(temp_file)
+
+
+def normalize(series):
+    if series.max() == series.min():
+        return series * 0  # 如果所有值相同，返回0
+    return (series - series.min()) / (series.max() - series.min())
+
 
 if __name__ == '__main__':
     title = clean_title('标题♥[]{}【】，：。！@#￥%……&*（）')
