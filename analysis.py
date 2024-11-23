@@ -99,7 +99,7 @@ def analyze_post_quality(csv_path: str = "data.csv", output_dir='分析报告') 
     df['浏览量权重'] = df['浏览数'].apply(lambda x: min(1.0, (x / MIN_VIEWS) ** 0.5))
     
     # 3. 重新计算互动质量分
-    df['互动质量'] = (df['收藏数'] * 2 + df['点赞数'] + df['评论数']) / df['浏览数'].clip(lower=1)
+    df['互动质量'] = (df['收藏数'] * 2 + df['点赞数'] + df['评论数']) / (df['浏览数'] + 10000)
     df['互动质量_标准化'] = normalize(df['互动质量'])
     
     # 2. 计算互动密度（考虑字数的互动频率）
@@ -184,11 +184,14 @@ def analyze_post_quality(csv_path: str = "data.csv", output_dir='分析报告') 
     df['点赞收藏差'] = df['点赞数'] - df['收藏数']
     
     # 计算深度互动率（收藏率）和轻互动率（点赞率）
-    df['收藏率'] = df['收藏数'] / df['浏览数'].clip(lower=1)
-    df['点赞率'] = df['点赞数'] / df['浏览数'].clip(lower=1)
+    # 添加平滑因子，防止极端值
+    MIN_VIEWS = 1000  # 最小浏览量基数
+    df['收藏率'] = (df['收藏数'] + 1) / (df['浏览数'] + MIN_VIEWS)
+    df['点赞率'] = (df['点赞数'] + 2) / (df['浏览数'] + MIN_VIEWS)
+
     
-    # 计算互动转化效率（收藏数/点赞数）
-    df['互动转化率'] = df['收藏数'] / df['点赞数'].clip(lower=1)
+    # 计算互动转化效率
+    df['互动转化率'] = (df['收藏数'] +5)/ (df['点赞数'] + 50)
     
     # 标准化互动转换率
     df['互动转化率_标准化'] = normalize(df['互动转化率'])

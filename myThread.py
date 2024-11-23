@@ -4,7 +4,8 @@ from bs4 import BeautifulSoup
 from decode import decode_base64_in_js
 from util import *
 from docx import Document
-from docx.shared import Inches
+from docx.shared import Inches, RGBColor
+from docx.oxml.ns import qn
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
@@ -88,9 +89,14 @@ def thread_spider(thread_url, block_name, download_images):
     """
     start_time = time.time()
     document = Document()
+    
+    # 设置默认字体为宋体
+    document.styles['Normal'].font.name = '宋体'
+    document.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+    
     page_num = 1
-    total_word_count = 0  # 添加字数统计
-
+    total_word_count = 0
+    
     try:
         while True:
             response = make_request(thread_url)
